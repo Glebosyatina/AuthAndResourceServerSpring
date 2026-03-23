@@ -9,6 +9,19 @@ public class Product{
     private Double price;
 
 
+    public Product(){}
+
+    public Product(String name, Double price){
+        this(null, name, price);
+    }
+
+    public Product(Integer id, String name, Double price){
+        super();
+        this.id = id;
+        this.name = name;
+        this.price = price;
+    }
+
     public Integer getId() {
         return id;
     }

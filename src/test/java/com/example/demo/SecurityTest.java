@@ -1,25 +1,35 @@
 package com.example.demo;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
+import com.example.demo.model.Product;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 
 @SpringBootTest
 @AutoConfigureMockMvc
 public class SecurityTest {
-    private static final String GET_ACCESS_TOKEN_ENDPOINT = "/oauth2/token";
+
+    private static final String GET_ACCESS_TOKEN_ENDPOINT = "/oauth2/token"; //в Spring Auth Server по умолчанию этот endpoint для получения jwt токена
+    private static final String PRODUCT_ENDPOINT = "/api/products";
+
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
 
     //тест с неправильными credentials, пользователь не получит токен
@@ -36,6 +46,7 @@ public class SecurityTest {
                 .andDo(print());
     }
 
+    //тест с правильными кредами
     @Test
     public void testGetAccessTokenSuccess() throws Exception{
         //выполнения запроса с верными кредами, пользователся создавали в RegisteredClientRepository в AuthorizationServerConfig
@@ -50,4 +61,51 @@ public class SecurityTest {
                 .andExpect(jsonPath("$.token_type", is("Bearer")))
                 .andDo(print());
     }
+
+
+    //тестируем доступ к ресурсам
+    @Test
+    public void testGetListOfProductsWithScopeRead() throws Exception {
+
+        mockMvc.perform(get(PRODUCT_ENDPOINT)
+                        .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
+                )
+                .andDo(print())
+                .andExpect(status().isNoContent());
+    }
+
+    //не должен давать создавать со scope read
+    @Test
+    public void testAddProductWithScopeRead() throws Exception {
+
+        Product product = new Product("Babanana", 10.0);
+        //сериализация продукта в строку
+        String requestBody = objectMapper.writeValueAsString(product);
+
+        mockMvc.perform(post(PRODUCT_ENDPOINT)
+                        .contentType("application/json")
+                        .content(requestBody)
+                        .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
+                )
+                .andDo(print())
+                .andExpect(status().isForbidden());
+    }
+
+    //scope write пропускаем и даем создать продукт
+    @Test
+    public void testAddProductWithScopeWrite() throws Exception {
+
+        Product product = new Product("Babanana", 10.0);
+        //сериализация продукта в строку
+        String requestBody = objectMapper.writeValueAsString(product);
+
+        mockMvc.perform(post(PRODUCT_ENDPOINT)
+                        .contentType("application/json")
+                        .content(requestBody)
+                        .with(jwt().jwt(jwt -> jwt.claim("scope", "write")))
+                )
+                .andDo(print())
+                .andExpect(status().isCreated());
+    }
+
 }

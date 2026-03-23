@@ -2,26 +2,34 @@ package com.example.demo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 
+//сервер авторизации
 @Configuration
 public class AuthorizationServerConfig {
 
+    private static final long ACCESS_TOKEN_EXPIRATION_TIME_MINUTES = 10;
+
     @Bean
     SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http){
+        //пропускаем только те что начинаются с /oath2/
+        http.securityMatcher("/oauth2/**");
         http.authorizeHttpRequests((authorize) -> authorize
                         .anyRequest().authenticated()
                 )
@@ -32,6 +40,8 @@ public class AuthorizationServerConfig {
         return http.build();
     }
 
+
+    //имитируем зареганных пользователей
     @Bean
     RegisteredClientRepository registeredClientRepository(){
         RegisteredClient client1 = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -43,7 +53,36 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .build();
 
-        return new InMemoryRegisteredClientRepository(client1);
+        RegisteredClient client2 = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("client2")
+                .clientSecret("{noop}222")
+                .clientName("Stepan")
+                .scope("write")
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .build();
+
+        return new InMemoryRegisteredClientRepository(client1, client2);
+    }
+
+    //чтобы в Jwt токене передавать scope кастомизируем его
+    @Bean
+    OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(){
+        return (context) -> {
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())){
+                RegisteredClient client = context.getRegisteredClient();
+
+                JwtClaimsSet.Builder builder = context.getClaims();
+
+                builder.issuer("CodeJava.net");
+                builder.expiresAt(Instant.now().plus(ACCESS_TOKEN_EXPIRATION_TIME_MINUTES, ChronoUnit.MINUTES));
+
+                builder.claims( (claims) -> {
+                   claims.put("scope", client.getScopes());
+                });
+            }
+        };
+
     }
 
 }
