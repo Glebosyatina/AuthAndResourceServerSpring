@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
-import com.example.demo.model.Product;
+import com.example.demo.model.Task;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -78,9 +78,9 @@ public class SecurityTest {
     @Test
     public void testAddProductWithScopeRead() throws Exception {
 
-        Product product = new Product("Babanana", 10.0);
+        Task task = new Task("client1", "сходить в магазин");
         //сериализация продукта в строку
-        String requestBody = objectMapper.writeValueAsString(product);
+        String requestBody = objectMapper.writeValueAsString(task);
 
         mockMvc.perform(post(PRODUCT_ENDPOINT)
                         .contentType("application/json")
@@ -95,9 +95,10 @@ public class SecurityTest {
     @Test
     public void testAddProductWithScopeWrite() throws Exception {
 
-        Product product = new Product("Babanana", 10.0);
+        Task task = new Task("client1", "сходить в магазин");
+
         //сериализация продукта в строку
-        String requestBody = objectMapper.writeValueAsString(product);
+        String requestBody = objectMapper.writeValueAsString(task);
 
         mockMvc.perform(post(PRODUCT_ENDPOINT)
                         .contentType("application/json")

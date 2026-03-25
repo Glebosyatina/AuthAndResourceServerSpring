@@ -29,7 +29,7 @@ public class ResourceServerConfig {
 
                 // на все запросы которые идут на /api/products требуем scope read или write в jwt токене
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/products").hasAnyAuthority("SCOPE_read", "SCOPE_write")
+                        .requestMatchers(HttpMethod.GET, "/api/tasks").hasAnyAuthority("SCOPE_read", "SCOPE_write")
                         .anyRequest().authenticated());                ;
 
         return http.build();
