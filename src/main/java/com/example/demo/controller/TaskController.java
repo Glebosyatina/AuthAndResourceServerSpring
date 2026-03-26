@@ -2,38 +2,46 @@ package com.example.demo.controller;
 
 
 import com.example.demo.model.Task;
-import org.apache.coyote.Response;
+import com.example.demo.service.TaskService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.*;
 
 @RestController
 @RequestMapping("/api")
 public class TaskController {
 
-  //in-memory store key - username, value - list tasks
-  private static final Map<String,List<Task>> tasksMap = new HashMap<>();
+  //зависимости
+  private final TaskService taskService;
+
+  //autowired для автоматического инжекта зависимостей
+  @Autowired
+  public TaskController(TaskService taskService){
+    this.taskService = taskService;
+  }
 
   @GetMapping("/tasks")
   public ResponseEntity<?> getTasks() {
     //достаем пользователя из jwt bearear токена
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    List<Task> listTasks = tasksMap.get(user);
-    return ResponseEntity.ok(listTasks);
+    List<Task> tasks = taskService.getTasks(user);
+    if (tasks.isEmpty()){
+      return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.ok(tasks);
   }
 
   @GetMapping("/tasks/{id}")
-  public ResponseEntity<?> getTask(@PathVariable Integer id) {
+  public ResponseEntity<?> getTask(@PathVariable UUID id) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    List<Task> listTasks = tasksMap.get(user);
-    Optional<Task> result = listTasks.stream().filter(p -> Objects.equals(p.getId(), id)).findFirst();
-    return ResponseEntity.ok(result);
+    return ResponseEntity.ok(taskService.getTaskById(user, id));
   }
 
   @PostMapping("/tasks")
@@ -41,55 +49,28 @@ public class TaskController {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    List<Task> taskList = tasksMap.get(user);
-    if (taskList == null){
-      taskList = new ArrayList<>();
-      tasksMap.put(user, taskList);
+    Task created = taskService.createTask(user, task);
+    if (created == null){
+      return ResponseEntity.internalServerError().build();
     }
-    //установка id и user_id для задачки
-    task.setId(taskList.size());
-    task.setUser_id(user);
-    taskList.add(task);
-
-    return ResponseEntity.ok(task);
+    return ResponseEntity.created(URI.create("/api/tasks")).build();
   }
 
   @PutMapping("/tasks/{id}")
-  public ResponseEntity<?> updateTask(@PathVariable Integer id, @RequestBody Task taskNew) {
+  public ResponseEntity<?> updateTask(@PathVariable UUID id, @RequestBody Task taskNew) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    List<Task> taskList = tasksMap.get(user);
-    for (int i = 0; i < taskList.size(); i++){
-      if (Objects.equals(taskList.get(i).getId(), id)){
-        taskNew.setId(i);
-        taskNew.setUser_id(user);
-        taskList.set(i, taskNew);
-        break;
-      }
-    }
-
-    return ResponseEntity.ok(taskNew);
+    return ResponseEntity.ok(taskService.updateTask(user, id, taskNew));
   }
 
   @DeleteMapping("/tasks/{id}")
-  public ResponseEntity<?> deleteTask(@PathVariable Integer id) {
+  public ResponseEntity<?> deleteTask(@PathVariable UUID id) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    List<Task> taskList = tasksMap.get(user);
-
-    //поиск задачи для удаления
-    boolean removed = taskList.removeIf(task -> Objects.equals(task.getId(), id));
-    if (removed){
-      //обновление все id
-      for (int i = 0; i < taskList.size(); i++){
-        taskList.get(i).setId(i);
-      }
-      return ResponseEntity.ok().build();
-    }
-    return ResponseEntity.notFound().build();
-
+    taskService.deleteTask(user, id);
+    return ResponseEntity.ok().build();
   }
 
 }

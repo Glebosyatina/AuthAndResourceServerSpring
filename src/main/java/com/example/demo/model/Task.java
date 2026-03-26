@@ -1,33 +1,51 @@
 package com.example.demo.model;
 
+import jakarta.persistence.*;
+
+import java.util.UUID;
+
+
+@Entity
+@Table(name="tasks")
+@IdClass(UserId.class)
 public class Task {
 
-  private String user_id; //uniq primary key
-  private Integer id;
+  @Id
+  @Column(name = "username")
+  private String user; //к какому пользователю относится таска
+
+  @Id
+  @Column(name = "id")
+  private UUID id;
+
   private String content;
 
   //конструктор без параметоров, нужен spring для создания объектов при сериализации/десериализации из json
   public Task(){}
 
   public Task(String user, String content){
-    this.user_id = user;
+    this.user = user;
+    this.content = content;
+  }
+
+  public Task(String content){
     this.content = content;
   }
 
   //геттеры сеттеры
-  public String getUser_id() {
-    return user_id;
+  public String getUser() {
+    return user;
   }
 
-  public void setUser_id(String user_id) {
-    this.user_id = user_id;
+  public void setUser(String user) {
+    this.user = user;
   }
 
-  public Integer getId() {
+  public UUID getId() {
     return id;
   }
 
-  public void setId(Integer id) {
+  public void setId(UUID id) {
     this.id = id;
   }
 
