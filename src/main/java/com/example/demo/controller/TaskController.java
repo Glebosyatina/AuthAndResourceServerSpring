@@ -37,7 +37,9 @@ public class TaskController {
   }
 
   @GetMapping("/tasks/{id}")
-  public ResponseEntity<?> getTask(@PathVariable UUID id) {
+  public ResponseEntity<?> getTask(
+      @PathVariable UUID id
+  ) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
@@ -45,7 +47,9 @@ public class TaskController {
   }
 
   @PostMapping("/tasks")
-  public ResponseEntity<?> createTask(@RequestBody Task task) {
+  public ResponseEntity<?> createTask(
+      @RequestBody Task task
+  ) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
@@ -57,7 +61,10 @@ public class TaskController {
   }
 
   @PutMapping("/tasks/{id}")
-  public ResponseEntity<?> updateTask(@PathVariable UUID id, @RequestBody Task taskNew) {
+  public ResponseEntity<?> updateTask(
+      @PathVariable UUID id,
+      @RequestBody Task taskNew
+  ) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
@@ -65,7 +72,9 @@ public class TaskController {
   }
 
   @DeleteMapping("/tasks/{id}")
-  public ResponseEntity<?> deleteTask(@PathVariable UUID id) {
+  public ResponseEntity<?> deleteTask(
+      @PathVariable UUID id
+  ) {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 

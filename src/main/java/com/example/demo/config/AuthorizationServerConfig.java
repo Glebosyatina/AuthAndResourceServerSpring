@@ -4,11 +4,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
@@ -26,6 +29,7 @@ public class AuthorizationServerConfig {
 
     private static final long ACCESS_TOKEN_EXPIRATION_TIME_MINUTES = 10;
 
+    //выдача Jwt токена при авторизации по /oauth2/token
     @Bean
     SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http){
         //пропускаем только те что начинаются с /oath2/
@@ -44,7 +48,9 @@ public class AuthorizationServerConfig {
     //имитируем зареганных пользователей
     @Bean
     RegisteredClientRepository registeredClientRepository(){
-        RegisteredClient client1 = RegisteredClient.withId(UUID.randomUUID().toString())
+
+        RegisteredClient client1 = RegisteredClient
+                .withId(UUID.randomUUID().toString())
                 .clientId("client1")
                 .clientSecret("{noop}123")
                 .clientName("Gleb")
@@ -53,7 +59,8 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .build();
 
-        RegisteredClient client2 = RegisteredClient.withId(UUID.randomUUID().toString())
+        RegisteredClient client2 = RegisteredClient
+                .withId(UUID.randomUUID().toString())
                 .clientId("client2")
                 .clientSecret("{noop}222")
                 .clientName("Stepan")
@@ -62,7 +69,13 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .build();
 
-        return new InMemoryRegisteredClientRepository(client1, client2);
+
+        //in memory репозиторий с пользователями(concurentHashMap)
+        RegisteredClientRepository registeredClientRepository = new InMemoryRegisteredClientRepository(client1);
+
+        registeredClientRepository.save(client2);
+
+        return registeredClientRepository;
     }
 
     //чтобы в Jwt токене передавать scope кастомизируем его
@@ -82,7 +95,18 @@ public class AuthorizationServerConfig {
                 });
             }
         };
+    }
 
+    //фильтр для регистрации
+    @Bean
+    SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity http){
+        http.securityMatcher("/api/clients/register")
+            .authorizeHttpRequests(authorize -> authorize
+                .anyRequest().permitAll()
+            )
+            .csrf(csrf -> csrf.disable()) // при необходимости отключаем CSRF для API
+            .formLogin(Customizer.withDefaults());
+        return http.build();
     }
 
 }
