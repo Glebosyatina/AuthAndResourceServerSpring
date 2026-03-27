@@ -13,7 +13,7 @@ public interface TaskService {
   List<Task> getTasks(String user);
   Task getTaskById(String user, UUID id);
   Task updateTask(String user, UUID id, Task task);
-  void deleteTask(String user, UUID id);
+  boolean deleteTask(String user, UUID id);
 
 
 }

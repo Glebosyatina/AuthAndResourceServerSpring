@@ -43,7 +43,11 @@ public class TaskController {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    return ResponseEntity.ok(taskService.getTaskById(user, id));
+    Task task = taskService.getTaskById(user, id);
+    if (task == null){
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(task);
   }
 
   @PostMapping("/tasks")
@@ -57,7 +61,7 @@ public class TaskController {
     if (created == null){
       return ResponseEntity.internalServerError().build();
     }
-    return ResponseEntity.created(URI.create("/api/tasks")).build();
+    return ResponseEntity.created(URI.create("/api/tasks")).body(created);
   }
 
   @PutMapping("/tasks/{id}")
@@ -78,8 +82,10 @@ public class TaskController {
 
     String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
 
-    taskService.deleteTask(user, id);
-    return ResponseEntity.ok().build();
+    if (taskService.deleteTask(user, id)) {
+      return ResponseEntity.ok().build();
+    }
+    return ResponseEntity.notFound().build();
   }
 
 }

@@ -4,22 +4,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.UUID;
 
 
@@ -29,9 +30,10 @@ public class AuthorizationServerConfig {
 
     private static final long ACCESS_TOKEN_EXPIRATION_TIME_MINUTES = 10;
 
+
     //выдача Jwt токена при авторизации по /oauth2/token
     @Bean
-    SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http){
+    SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) {
         //пропускаем только те что начинаются с /oath2/
         http.securityMatcher("/oauth2/**");
         http.authorizeHttpRequests((authorize) -> authorize
@@ -47,7 +49,7 @@ public class AuthorizationServerConfig {
 
     //имитируем зареганных пользователей
     @Bean
-    RegisteredClientRepository registeredClientRepository(){
+    RegisteredClientRepository registeredClientRepository() {
 
         RegisteredClient client1 = RegisteredClient
                 .withId(UUID.randomUUID().toString())
@@ -80,9 +82,9 @@ public class AuthorizationServerConfig {
 
     //чтобы в Jwt токене передавать scope кастомизируем его
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(){
+    OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return (context) -> {
-            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())){
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 RegisteredClient client = context.getRegisteredClient();
 
                 JwtClaimsSet.Builder builder = context.getClaims();
@@ -90,8 +92,8 @@ public class AuthorizationServerConfig {
                 builder.issuer("CodeJava.net");
                 builder.expiresAt(Instant.now().plus(ACCESS_TOKEN_EXPIRATION_TIME_MINUTES, ChronoUnit.MINUTES));
 
-                builder.claims( (claims) -> {
-                   claims.put("scope", client.getScopes());
+                builder.claims((claims) -> {
+                    claims.put("scope", client.getScopes());
                 });
             }
         };
@@ -99,14 +101,31 @@ public class AuthorizationServerConfig {
 
     //фильтр для регистрации
     @Bean
-    SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity http){
-        http.securityMatcher("/api/clients/register")
-            .authorizeHttpRequests(authorize -> authorize
-                .anyRequest().permitAll()
-            )
-            .csrf(csrf -> csrf.disable()) // при необходимости отключаем CSRF для API
-            .formLogin(Customizer.withDefaults());
+    SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity http) {
+        http.securityMatcher("/**")
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().permitAll()
+                )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable()) // при необходимости отключаем CSRF для API
+                .formLogin(Customizer.withDefaults());
         return http.build();
+    }
+
+
+    //CORS конфиг чтобы фронтенд мог отправлять запросы на бекенд
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(360L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
 }
