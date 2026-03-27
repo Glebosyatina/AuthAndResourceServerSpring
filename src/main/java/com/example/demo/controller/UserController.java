@@ -33,12 +33,12 @@ public class UserController {
   ) {
     //проверка на верный  grant_type
     if (!"client_credentials".equals(grant_type)) {
-      return ResponseEntity.badRequest().body("Ты чего? можно только c grant_type 'client_credentials'.");
+      return ResponseEntity.badRequest().body("Чак сказал что grant_type только 'client_credentials'.");
     }
 
     //проверяем что такого пользователя еще нет
     if (registeredClientRepository.findByClientId(client_id) != null) {
-      return ResponseEntity.badRequest().body("Такой пользователь уже зарегистрирован.");
+      return ResponseEntity.badRequest().body("Чак уже встречал такого, будь собой - не будь не собой.");
     }
 
     RegisteredClient client = RegisteredClient
@@ -53,6 +53,6 @@ public class UserController {
 
     registeredClientRepository.save(client);
 
-    return ResponseEntity.ok("Поздравляю, вы успешно зарегистрированы");
+    return ResponseEntity.ok("Поздравляю, Чак тебя запомнил");
   }
 }

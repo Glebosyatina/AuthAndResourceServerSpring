@@ -61,7 +61,15 @@ public class TaskServiceImpl implements TaskService{
   }
 
   @Override
-  public void deleteTask(String user, UUID id) {
+  public boolean deleteTask(String user, UUID id) {
+
+    Optional<Task> task = taskRepository.findById(new UserId(user, id));
+    //проверяем есть ли такая задача
+    if (task.isEmpty()){
+      return false;
+    }
+
     taskRepository.deleteById(new UserId(user,id));
+    return true;
   }
 }
