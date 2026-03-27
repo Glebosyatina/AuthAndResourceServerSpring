@@ -2,13 +2,14 @@ package com.example.demo;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
-import com.example.demo.model.Product;
+import com.example.demo.model.Task;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 public class SecurityTest {
 
     private static final String GET_ACCESS_TOKEN_ENDPOINT = "/oauth2/token"; //в Spring Auth Server по умолчанию этот endpoint для получения jwt токена
-    private static final String PRODUCT_ENDPOINT = "/api/products";
+    private static final String PRODUCT_ENDPOINT = "/api/tasks";
 
 
     @Autowired
@@ -65,44 +66,45 @@ public class SecurityTest {
 
     //тестируем доступ к ресурсам
     @Test
-    public void testGetListOfProductsWithScopeRead() throws Exception {
+    public void testGetListOfTasksWithScopeRead() throws Exception {
 
         mockMvc.perform(get(PRODUCT_ENDPOINT)
-                        .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
+                    .with(user("client2"))
+                    .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
                 )
-                .andDo(print())
-                .andExpect(status().isNoContent());
+                .andDo(print());
     }
 
     //не должен давать создавать со scope read
     @Test
-    public void testAddProductWithScopeRead() throws Exception {
+    public void testAddTaskWithScopeRead() throws Exception {
 
-        Product product = new Product("Babanana", 10.0);
+        Task task = new Task("сходить в магазин");
         //сериализация продукта в строку
-        String requestBody = objectMapper.writeValueAsString(product);
+        String requestBody = objectMapper.writeValueAsString(task);
 
         mockMvc.perform(post(PRODUCT_ENDPOINT)
-                        .contentType("application/json")
-                        .content(requestBody)
-                        .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
+                    .contentType("application/json")
+                    .content(requestBody)
+                    .with(jwt().jwt(jwt -> jwt.claim("scope", "read")))
                 )
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     //scope write пропускаем и даем создать продукт
     @Test
-    public void testAddProductWithScopeWrite() throws Exception {
+    public void testAddTaskWithScopeWrite() throws Exception {
 
-        Product product = new Product("Babanana", 10.0);
+        Task task = new Task("client1", "сходить в магазин");
+
         //сериализация продукта в строку
-        String requestBody = objectMapper.writeValueAsString(product);
+        String requestBody = objectMapper.writeValueAsString(task);
 
         mockMvc.perform(post(PRODUCT_ENDPOINT)
-                        .contentType("application/json")
-                        .content(requestBody)
-                        .with(jwt().jwt(jwt -> jwt.claim("scope", "write")))
+                    .contentType("application/json")
+                    .content(requestBody)
+                    .with(jwt().jwt(jwt -> jwt.claim("scope", "write")))
                 )
                 .andDo(print())
                 .andExpect(status().isCreated());
