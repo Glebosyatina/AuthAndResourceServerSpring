@@ -2,6 +2,8 @@ package com.example.demo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -9,6 +11,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
@@ -49,7 +52,7 @@ public class AuthorizationServerConfig {
 
     //имитируем зареганных пользователей
     @Bean
-    RegisteredClientRepository registeredClientRepository() {
+    RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
 
         RegisteredClient client1 = RegisteredClient
                 .withId(UUID.randomUUID().toString())
@@ -71,10 +74,10 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .build();
 
+        //создаем хранилище registeredClientRepository, теперь хранится в бд(см. resources/shema.sql)
+        RegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
 
-        //in memory репозиторий с пользователями(concurentHashMap)
-        RegisteredClientRepository registeredClientRepository = new InMemoryRegisteredClientRepository(client1);
-
+        registeredClientRepository.save(client1);
         registeredClientRepository.save(client2);
 
         return registeredClientRepository;
@@ -100,17 +103,18 @@ public class AuthorizationServerConfig {
     }
 
     //фильтр для регистрации
+
+    //ручка для регистрации
     @Bean
-    SecurityFilterChain publicEndpointsSecurityFilterChain(HttpSecurity http) {
-        http.securityMatcher("/**")
-                .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().permitAll()
-                )
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable()) // при необходимости отключаем CSRF для API
-                .formLogin(Customizer.withDefaults());
+    public SecurityFilterChain publicApiFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/api/clients/**")
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .formLogin(Customizer.withDefaults());
         return http.build();
     }
+
 
 
     //CORS конфиг чтобы фронтенд мог отправлять запросы на бекенд

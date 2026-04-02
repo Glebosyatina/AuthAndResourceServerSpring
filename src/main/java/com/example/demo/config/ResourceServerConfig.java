@@ -28,9 +28,10 @@ public class ResourceServerConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
 
                 // на все запросы которые идут на /api/products требуем scope read или write в jwt токене
+                //и проверяем что такой пользователь авторизован
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/tasks").hasAnyAuthority("SCOPE_read", "SCOPE_write")
-                        .anyRequest().authenticated());                ;
+                        .anyRequest().authenticated());
 
         return http.build();
     }

@@ -1,0 +1,363 @@
+openapi: 3.0.3
+info:
+  title: Task Manager API
+  description: |
+    API для управления задачами (Tasks) с аутентификацией через OAuth2 Client Credentials.
+    Регистрация клиентов осуществляется через открытый endpoint `/api/clients/register`.
+    Для доступа к задачам требуется Bearer токен, полученный по потоку client_credentials.
+
+    **Получение токена:**
+    Отправьте POST-запрос на `/oauth2/token` с параметрами `client_id`, `client_secret` и `grant_type=client_credentials`.
+    В ответ вы получите JWT токен, который нужно передавать в заголовке `Authorization: Bearer <token>`.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен, полученный при OAuth2 client_credentials
+    OAuth2ClientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth2/token
+          scopes:
+            read: Доступ на чтение
+            write: Доступ на запись
+
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор задачи (генерируется сервером)
+        user:
+          type: string
+          description: Имя пользователя (извлекается из токена)
+        content:
+          type: string
+          description: Содержание задачи
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        user: "client1"
+        content: "Купить молоко"
+
+    TaskCreateRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Содержание новой задачи
+      example:
+        content: "Новая задача"
+
+    TaskUpdateRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Обновлённое содержание задачи
+      example:
+        content: "Обновлённая задача"
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT токен доступа
+        token_type:
+          type: string
+          description: Тип токена (всегда Bearer)
+          example: "Bearer"
+        expires_in:
+          type: integer
+          description: Время жизни токена в секундах (600 секунд = 10 минут)
+          example: 600
+        scope:
+          type: string
+          description: Предоставленные области доступа
+          example: "write"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Код ошибки (например, invalid_client, invalid_grant)
+        error_description:
+          type: string
+          description: Описание ошибки
+
+  responses:
+    UnauthorizedError:
+      description: Отсутствует или неверный Bearer токен
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+
+paths:
+  /oauth2/token:
+    post:
+      summary: Получение JWT токена
+      description: |
+        Эндпоинт OAuth2 для получения access_token по гранту client_credentials.
+        Требует передачу параметров в формате `application/x-www-form-urlencoded`.
+      operationId: getToken
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - client_id
+                - client_secret
+                - grant_type
+              properties:
+                client_id:
+                  type: string
+                  description: Идентификатор клиента (зарегистрированный)
+                  example: "client1"
+                client_secret:
+                  type: string
+                  description: Секрет клиента
+                  example: "123"
+                grant_type:
+                  type: string
+                  enum: [client_credentials]
+                  description: Тип гранта (только client_credentials)
+                  example: "client_credentials"
+                scope:
+                  type: string
+                  description: Запрашиваемые области (опционально, но должны соответствовать разрешённым для клиента)
+                  example: "write"
+      responses:
+        '200':
+          description: Токен успешно выдан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Неверный запрос (например, отсутствует grant_type или client_secret)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Неверные client_id или client_secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/tasks:
+    get:
+      summary: Получить список всех задач пользователя
+      description: Возвращает все задачи, принадлежащие аутентифицированному пользователю (из JWT)
+      operationId: getTasks
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список задач успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '204':
+          description: Задачи отсутствуют (список пуст)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Создать новую задачу
+      description: Создаёт задачу для аутентифицированного пользователя. ID генерируется автоматически, поле user игнорируется.
+      operationId: createTask
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+      responses:
+        '201':
+          description: Задача успешно создана
+          headers:
+            Location:
+              description: URL созданной задачи
+              schema:
+                type: string
+                format: uri
+                example: "/api/tasks/123e4567-e89b-12d3-a456-426614174000"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Ошибка сервера при создании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tasks/{id}:
+    get:
+      summary: Получить задачу по ID
+      description: Возвращает задачу, если она принадлежит аутентифицированному пользователю
+      operationId: getTaskById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID задачи
+      responses:
+        '200':
+          description: Задача найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Задача не найдена или не принадлежит пользователю
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Обновить задачу
+      description: Обновляет содержание существующей задачи (принадлежащей пользователю)
+      operationId: updateTask
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID задачи
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200':
+          description: Задача успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Задача не найдена
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Удалить задачу
+      description: Удаляет задачу, если она принадлежит пользователю
+      operationId: deleteTask
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID задачи
+      responses:
+        '200':
+          description: Задача успешно удалена
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Задача не найдена или не принадлежит пользователю
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/clients/register:
+    post:
+      summary: Регистрация нового OAuth2 клиента
+      description: |
+        Регистрирует клиента с грантом `client_credentials`.
+        Пароль сохраняется с префиксом `{noop}` (для тестов).
+        Возвращает сообщение об успехе или ошибку.
+      operationId: registerClient
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Идентификатор клиента
+          example: "my_client"
+        - name: client_secret
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Секрет клиента (будет храниться в открытом виде с {noop})
+          example: "secret123"
+        - name: grant_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [client_credentials]
+          description: Тип гранта (допустим только `client_credentials`)
+          example: "client_credentials"
+      responses:
+        '200':
+          description: Клиент успешно зарегистрирован
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Поздравляю, Чак тебя запомнил"
+        '400':
+          description: Ошибка в запросе (неверный grant_type или client_id уже существует)
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                invalid_grant:
+                  value: "Чак сказал что grant_type только 'client_credentials'."
+                duplicate_client:
+                  value: "Чак уже встречал такого, будь собой - не будь не собой."
+        '500':
+          description: Внутренняя ошибка сервера

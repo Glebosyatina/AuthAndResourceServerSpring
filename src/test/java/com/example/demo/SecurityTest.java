@@ -78,7 +78,7 @@ public class SecurityTest {
                 .andDo(print());
     }
 
-    //не должен давать создавать со scope read
+    //создание задачи, пока даем создавать с любым scope не важно read или write
     @Test
     public void testAddTaskWithScopeRead() throws Exception {
 
@@ -95,7 +95,7 @@ public class SecurityTest {
                 .andExpect(status().isCreated());
     }
 
-    //scope write пропускаем и даем создать продукт
+    //даем создать задачу
     @Test
     public void testAddTaskWithScopeWrite() throws Exception {
 
