@@ -9,7 +9,7 @@ info:
     **Получение токена:**
     Отправьте POST-запрос на `/oauth2/token` с параметрами `client_id`, `client_secret` и `grant_type=client_credentials`.
     В ответ вы получите JWT токен, который нужно передавать в заголовке `Authorization: Bearer <token>`.
-  version: 1.0.0
+  version: 1.1.0
 servers:
   - url: http://localhost:8080
     description: Development server
@@ -40,14 +40,34 @@ components:
           description: Уникальный идентификатор задачи (генерируется сервером)
         user:
           type: string
-          description: Имя пользователя (извлекается из токена)
+          description: Имя пользователя, которому принадлежит задача (извлекается из токена)
         content:
           type: string
           description: Содержание задачи
+        completed:
+          type: boolean
+          description: Статус выполнения задачи
+          default: false
+        dueDate:
+          type: string
+          format: date-time
+          description: Срок выполнения задачи
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата и время создания задачи
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата и время последнего обновления задачи
       example:
         id: "123e4567-e89b-12d3-a456-426614174000"
         user: "client1"
         content: "Купить молоко"
+        completed: false
+        dueDate: "2025-12-31T23:59:59"
+        createdAt: "2025-01-01T10:00:00"
+        updatedAt: "2025-01-01T10:00:00"
 
     TaskCreateRequest:
       type: object
@@ -57,19 +77,35 @@ components:
         content:
           type: string
           description: Содержание новой задачи
+        completed:
+          type: boolean
+          description: Статус выполнения (если не указано, false)
+        dueDate:
+          type: string
+          format: date-time
+          description: Срок выполнения (если не указан, устанавливается текущая дата+время)
       example:
         content: "Новая задача"
+        completed: false
+        dueDate: "2025-12-31T23:59:59"
 
     TaskUpdateRequest:
       type: object
-      required:
-        - content
       properties:
         content:
           type: string
           description: Обновлённое содержание задачи
+        completed:
+          type: boolean
+          description: Обновлённый статус выполнения
+        dueDate:
+          type: string
+          format: date-time
+          description: Обновлённый срок выполнения
       example:
         content: "Обновлённая задача"
+        completed: true
+        dueDate: "2025-12-31T23:59:59"
 
     TokenResponse:
       type: object
@@ -189,7 +225,10 @@ paths:
 
     post:
       summary: Создать новую задачу
-      description: Создаёт задачу для аутентифицированного пользователя. ID генерируется автоматически, поле user игнорируется.
+      description: |
+        Создаёт задачу для аутентифицированного пользователя.
+        Поле `user` и идентификатор `id` игнорируются и генерируются сервером.
+        Если не указаны `completed` или `dueDate`, устанавливаются значения по умолчанию (false и текущая дата+время соответственно).
       operationId: createTask
       security:
         - BearerAuth: []
@@ -253,7 +292,10 @@ paths:
 
     put:
       summary: Обновить задачу
-      description: Обновляет содержание существующей задачи (принадлежащей пользователю)
+      description: |
+        Обновляет существующую задачу (принадлежащую пользователю).
+        Можно обновить одно или несколько полей (content, completed, dueDate). 
+        Непереданные поля остаются без изменений.
       operationId: updateTask
       security:
         - BearerAuth: []
@@ -281,7 +323,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
-          description: Задача не найдена
+          description: Задача не найдена или не принадлежит пользователю
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -306,6 +348,63 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '404':
           description: Задача не найдена или не принадлежит пользователю
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/tasks/by-date:
+    get:
+      summary: Получить задачи по дате
+      description: |
+        Возвращает список задач, у которых `dueDate` совпадает с указанной датой (с точностью до дня?).
+        **Внимание:** текущая реализация не фильтрует задачи по пользователю, возвращая задачи всех клиентов.
+        Требуется аутентификация.
+      operationId: getTasksByDate
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Дата в формате ISO 8601 (например, 2025-12-31T23:59:59). Сравнение происходит по полному значению.
+          example: "2025-12-31T23:59:59"
+      responses:
+        '200':
+          description: Список задач на указанную дату
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/tasks/overdue:
+    get:
+      summary: Получить просроченные задачи
+      description: |
+        Возвращает список задач, у которых `dueDate` меньше текущего момента времени.
+        **Внимание:** текущая реализация не фильтрует задачи по пользователю, возвращая задачи всех клиентов.
+        Требуется аутентификация.
+      operationId: getOverdueTasks
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список просроченных задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
