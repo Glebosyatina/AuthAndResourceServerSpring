@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 //контроллер для регистрации
 @RestController
@@ -39,6 +40,13 @@ public class UserController {
     //проверяем что такого пользователя еще нет
     if (registeredClientRepository.findByClientId(client_id) != null) {
       return ResponseEntity.badRequest().body("Чак уже встречал такого, будь собой - не будь не собой.");
+    }
+
+    //валидация пароля
+    String special = "/@?<>%* \t";
+    String pattern = ".*[" + Pattern.quote(special) + "].*";
+    if (client_secret.length() < 6 || client_secret.length() > 32 || client_secret.matches(pattern)){
+      return ResponseEntity.badRequest().body("Чаку не нужно взламывать твой аккаунт, с таким паролем он уже взломан");
     }
 
     RegisteredClient client = RegisteredClient
