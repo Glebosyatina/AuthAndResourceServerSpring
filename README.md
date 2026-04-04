@@ -14,4 +14,6 @@
 
   DELETE /api/tasks/{id}
 
+Запуск
+mvn spring-boot:run
   
