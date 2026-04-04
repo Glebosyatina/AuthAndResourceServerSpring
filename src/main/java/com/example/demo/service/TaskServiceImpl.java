@@ -6,6 +6,7 @@ import com.example.demo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,4 +73,18 @@ public class TaskServiceImpl implements TaskService{
     taskRepository.deleteById(new UserId(user,id));
     return true;
   }
+
+  @Override
+  public List<Task> getTasksByDate(LocalDateTime date) {
+    return taskRepository.findByDueDateBetween(
+        date.withHour(0).withMinute(0).withSecond(0),
+        date.withHour(23).withMinute(59).withSecond(59)
+    );
+  }
+
+  @Override
+  public List<Task> getOverdueTasks() {
+    return taskRepository.findByDueDateBeforeAndCompletedFalse(LocalDateTime.now());
+  }
+
 }

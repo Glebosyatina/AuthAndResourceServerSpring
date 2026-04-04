@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -23,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class SecurityTest {
+public class SecurityAndWebTest {
 
     private static final String REGISTER_ENDPOINT = "/api/clients/register";
     private static final String GET_ACCESS_TOKEN_ENDPOINT = "/oauth2/token"; //в Spring Auth Server по умолчанию этот endpoint для получения jwt токена
@@ -34,7 +36,6 @@ public class SecurityTest {
 
     @Autowired
     ObjectMapper objectMapper;
-
 
     //тест с неправильными credentials, пользователь не получит токен
     @Test
@@ -99,7 +100,12 @@ public class SecurityTest {
     @Test
     public void testAddTaskWithScopeWrite() throws Exception {
 
-        Task task = new Task("Chack Norris", "Чак Норрис заставил «Хэппи Мил» заплакать.");
+        Task task = new Task("Chack Norris",
+            "Чак Норрис заставил «Хэппи Мил» заплакать.",
+            true,
+            LocalDateTime.now().plusDays(1),
+            LocalDateTime.now(),
+            LocalDateTime.now());
 
         //сериализация продукта в строку
         String requestBody = objectMapper.writeValueAsString(task);
