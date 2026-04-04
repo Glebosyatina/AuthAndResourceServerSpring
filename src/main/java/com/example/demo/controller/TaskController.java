@@ -15,6 +15,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "http://localhost:5000")
 public class TaskController {
 
   //зависимости
