@@ -17,11 +17,11 @@ public interface TaskRepository extends JpaRepository<Task, UserId> {
   List<Task> findAllByUser(String user);
 
   // Поиск задач по диапазону дат
-  List<Task> findByDueDateBetween(LocalDateTime start, LocalDateTime end);
+  List<Task> findByUserAndDueDateBetween(String user, LocalDateTime start, LocalDateTime end);
 
   // Просроченные и невыполненные
-  List<Task> findByDueDateBeforeAndCompletedFalse(LocalDateTime now);
+  List<Task> findByUserAndDueDateBeforeAndCompletedFalse(String user, LocalDateTime now);
 
   // По статусу
-  List<Task> findByCompleted(boolean completed);
+  List<Task> findByUserAndCompleted(String user, boolean completed);
 }

@@ -15,6 +15,7 @@ public interface TaskService {
   Task getTaskById(String user, UUID id);
   Task updateTask(String user, UUID id, Task task);
   boolean deleteTask(String user, UUID id);
-  List<Task> getTasksByDate(LocalDateTime date);
-  List<Task> getOverdueTasks();
+  List<Task> getTasksByDate(String user, LocalDateTime date);
+  List<Task> getOverdueTasks(String user);
+  List<Task> getCompletedTasks(String user);
 }

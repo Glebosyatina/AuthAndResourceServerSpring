@@ -75,16 +75,25 @@ public class TaskServiceImpl implements TaskService{
   }
 
   @Override
-  public List<Task> getTasksByDate(LocalDateTime date) {
-    return taskRepository.findByDueDateBetween(
+  public List<Task> getTasksByDate(String user, LocalDateTime date) {
+    return taskRepository.findByUserAndDueDateBetween(
+        user,
         date.withHour(0).withMinute(0).withSecond(0),
         date.withHour(23).withMinute(59).withSecond(59)
     );
   }
 
   @Override
-  public List<Task> getOverdueTasks() {
-    return taskRepository.findByDueDateBeforeAndCompletedFalse(LocalDateTime.now());
+  public List<Task> getOverdueTasks(String user) {
+    return taskRepository.findByUserAndDueDateBeforeAndCompletedFalse(
+        user,
+        LocalDateTime.now()
+    );
+  }
+
+  @Override
+  public List<Task> getCompletedTasks(String user){
+    return taskRepository.findByUserAndCompleted(user, true);
   }
 
 }

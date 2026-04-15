@@ -101,13 +101,28 @@ public class TaskController {
    //задачи по дате
   @GetMapping("/tasks/by-date")
   public ResponseEntity<?> getTasksByDate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date){
-    return ResponseEntity.ok(taskService.getTasksByDate(date));
+
+    String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+
+    return ResponseEntity.ok(taskService.getTasksByDate(user, date));
   }
 
    //просроченные задачи
   @GetMapping("/tasks/overdue")
   public ResponseEntity<?> getOverdueTasks(){
-    return ResponseEntity.ok(taskService.getOverdueTasks());
+
+    String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+
+    return ResponseEntity.ok(taskService.getOverdueTasks(user));
+  }
+
+  //выполненные задачи
+  @GetMapping("/tasks/completed")
+  public ResponseEntity<?> getCompletedTasks(){
+
+    String user = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+
+    return ResponseEntity.ok(taskService.getCompletedTasks(user));
   }
 
 
