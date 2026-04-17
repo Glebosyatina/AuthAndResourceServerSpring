@@ -55,6 +55,7 @@ public class TaskServiceImpl implements TaskService{
     if (taskOptional.isPresent()){
       Task taskNew = taskOptional.get();
       taskNew.setContent(task.getContent());
+      taskNew.setCompleted(task.isCompleted());
       taskRepository.save(taskNew);
       return taskNew;
     }
